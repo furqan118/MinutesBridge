@@ -5,7 +5,7 @@ namespace MinutesBridge.Core.Tests;
 public sealed class OAuthBrokerClientTests
 {
     [Fact]
-    public async Task PollAsync_SendsPollingSecretInBodyNotUrl()
+    public async Task PollAsyncSendsPollingSecretInBodyNotUrl()
     {
         using var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json("""
             {
@@ -29,7 +29,7 @@ public sealed class OAuthBrokerClientTests
     }
 
     [Fact]
-    public async Task StartAsync_RejectsAuthorizationRedirectToUnexpectedHost()
+    public async Task StartAsyncRejectsAuthorizationRedirectToUnexpectedHost()
     {
         var expires = DateTimeOffset.UtcNow.AddMinutes(5).ToString("O");
         using var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json($$"""
@@ -48,7 +48,7 @@ public sealed class OAuthBrokerClientTests
     }
 
     [Fact]
-    public async Task StartAsync_AcceptsBrokerAuthorizationUrl()
+    public async Task StartAsyncAcceptsBrokerAuthorizationUrl()
     {
         var expires = DateTimeOffset.UtcNow.AddMinutes(5).ToString("O");
         using var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json($$"""

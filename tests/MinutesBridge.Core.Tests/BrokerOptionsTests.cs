@@ -9,13 +9,13 @@ public sealed class BrokerOptionsTests
     [InlineData("https://user:password@broker.example/")]
     [InlineData("https://broker.example/path/")]
     [InlineData("https://broker.example/?secret=value")]
-    public void Validate_RejectsUnsafeBrokerAddresses(string value)
+    public void ValidateRejectsUnsafeBrokerAddresses(string value)
     {
         Assert.Throws<ArgumentException>(() => BrokerOptions.Validate(new Uri(value)));
     }
 
     [Fact]
-    public void Validate_AcceptsHttpsOrigin()
+    public void ValidateAcceptsHttpsOrigin()
     {
         BrokerOptions.Validate(new Uri("https://broker.example/"));
     }

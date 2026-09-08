@@ -8,7 +8,7 @@ public sealed class ConfluenceCatalogClientTests
     private const string CloudId = "9fe25af9-2a43-4fd1-889c-52d68f254936";
 
     [Fact]
-    public async Task GetSpacesAsync_ReturnsOnlyValidAuthorizedResults()
+    public async Task GetSpacesAsyncReturnsOnlyValidAuthorizedResults()
     {
         using var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json("""
             {"results":[
@@ -29,7 +29,7 @@ public sealed class ConfluenceCatalogClientTests
     }
 
     [Fact]
-    public async Task FindLatestMeetingPageAsync_UsesTitleDateAndSameSiteLinks()
+    public async Task FindLatestMeetingPageAsyncUsesTitleDateAndSameSiteLinks()
     {
         using var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json("""
             {"results":[

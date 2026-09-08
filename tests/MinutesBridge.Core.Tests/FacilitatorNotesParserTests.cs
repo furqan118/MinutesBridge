@@ -5,7 +5,7 @@ namespace MinutesBridge.Core.Tests;
 public sealed class FacilitatorNotesParserTests
 {
     [Fact]
-    public void Parse_GroupsBulletsUnderTopics()
+    public void ParseGroupsBulletsUnderTopics()
     {
         const string input = "ACE version control:\n- Confirm release owner.\n- Review versions.\n\nStaff events:\n• Confirm date.";
 
@@ -18,7 +18,7 @@ public sealed class FacilitatorNotesParserTests
     }
 
     [Fact]
-    public void Parse_RejectsOversizedNotes()
+    public void ParseRejectsOversizedNotes()
     {
         var input = new string('a', FacilitatorNotesParser.MaximumInputCharacters + 1);
 

@@ -6,7 +6,7 @@ namespace MinutesBridge.Core.Tests;
 public sealed class ConfluenceStorageRendererTests
 {
     [Fact]
-    public void Render_EncodesUntrustedMeetingContent()
+    public void RenderEncodesUntrustedMeetingContent()
     {
         var meeting = new MeetingMinutes(
             "BHITS", new DateOnly(2026, 9, 6), "10:00", "Teams", "A < B", "Furqan",
@@ -20,7 +20,7 @@ public sealed class ConfluenceStorageRendererTests
     }
 
     [Fact]
-    public void PageTitle_UsesSortableIsoDate()
+    public void PageTitleUsesSortableIsoDate()
     {
         var meeting = new MeetingMinutes(
             "BHITS", new DateOnly(2026, 9, 6), "", "Teams", "", "", [], [], []);

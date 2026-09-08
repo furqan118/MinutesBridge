@@ -7,7 +7,7 @@ public sealed class ConfluenceCloudPublisherTests
     [Theory]
     [InlineData("../space", "123")]
     [InlineData("123", "parent/child")]
-    public async Task CreatePageAsync_RejectsInvalidDestinationIdentifiers(string spaceId, string parentId)
+    public async Task CreatePageAsyncRejectsInvalidDestinationIdentifiers(string spaceId, string parentId)
     {
         using var handler = new StubHttpMessageHandler(_ => throw new InvalidOperationException("HTTP must not be called."));
         using var httpClient = new HttpClient(handler);
