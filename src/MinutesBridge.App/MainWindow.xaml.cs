@@ -359,8 +359,7 @@ public partial class MainWindow : Window
             var text = ReadClipboardText();
             if (text.Length > FacilitatorNotesParser.MaximumInputCharacters)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(text),
+                throw new InvalidDataException(
                     $"Clipboard notes must be {FacilitatorNotesParser.MaximumInputCharacters:N0} characters or fewer.");
             }
 
@@ -370,7 +369,9 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is ArgumentException or InvalidDataException or System.Runtime.InteropServices.COMException)
         {
             MessageBox.Show(
-                ex is ArgumentException ? ex.Message : "MinutesBridge could not read supported text from the clipboard.",
+                ex is ArgumentException or InvalidDataException
+                    ? ex.Message
+                    : "MinutesBridge could not read supported text from the clipboard.",
                 "Clipboard import failed",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
