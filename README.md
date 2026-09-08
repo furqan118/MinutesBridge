@@ -4,7 +4,7 @@ MinutesBridge is a Windows desktop app that converts copied Microsoft Teams
 Facilitator notes into the BHITS Confluence meeting-notes format. It does not
 record meetings, retrieve transcripts, or send notes to another AI service.
 
-## Current milestone (v0.2)
+## Current milestone (v0.3 in progress)
 
 This starter implements:
 
@@ -28,6 +28,14 @@ The secure connection foundation now also implements:
 - strict validation for broker URLs, tenant/site identifiers, pasted note size,
   people lists, tokens, and remote response sizes;
 - Windows CI for formatting, unit tests, application builds, and CodeQL.
+
+The v0.3 editing foundation adds:
+
+- bounded local clipboard import that prefers rich-text content and falls back
+  to Unicode text;
+- editable agenda rows for topics, owners, and one-note-per-line content;
+- add, remove, and reorder controls before the mandatory preview;
+- independent validation of edited rows before rendering or draft export.
 
 Live publishing is intentionally disabled in the desktop UI until OAuth is
 connected. No Atlassian client secret or employee password belongs in the app.
@@ -74,11 +82,10 @@ secret store, redirect URI, and identity controls.
 
 ## Next milestone
 
-1. Add editable agenda rows and rich clipboard import.
-2. Publish as a restricted draft, then open the created page for review.
-3. Add sign-out/revocation and broker session renewal.
-4. Generate and commit the NuGet lock file on Windows.
-5. Package and sign an MSIX installer.
+1. Publish as a restricted draft, then open the created page for review.
+2. Add sign-out/revocation and broker session renewal.
+3. Generate and commit the NuGet lock file on Windows.
+4. Package and sign an MSIX installer.
 
 ## Privacy defaults
 

@@ -19,7 +19,7 @@
     </Border>
 
     <Grid Grid.Row="1" Margin="24,20">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="430"/><ColumnDefinition Width="16"/><ColumnDefinition/></Grid.ColumnDefinitions>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="560"/><ColumnDefinition Width="16"/><ColumnDefinition/></Grid.ColumnDefinitions>
 
       <Border Grid.Column="0" Background="White" BorderBrush="#DDE4EE" BorderThickness="1" CornerRadius="10" Padding="22">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -44,9 +44,43 @@
               </StackPanel>
             </Border>
             <TextBlock Text="1  Import &amp; describe" FontWeight="Bold" FontSize="20" Foreground="{StaticResource Navy}" Margin="0,0,0,14"/>
-            <TextBlock Text="Paste Facilitator notes" FontWeight="SemiBold"/>
-            <TextBox x:Name="NotesInput" Height="150" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+            <DockPanel LastChildFill="False">
+              <TextBlock Text="Paste Facilitator notes" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <Button DockPanel.Dock="Right" Content="Paste rich clipboard" Click="PasteClipboard_Click"
+                      Padding="10,5" Margin="8,0,0,4" ToolTip="Imports bounded RTF or Unicode text from the local clipboard."/>
+            </DockPanel>
+            <TextBox x:Name="NotesInput" Height="130" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                      Text="ACE version control:&#x0a;- Confirm the shared release process.&#x0a;&#x0a;Staff events:&#x0a;- Confirm attendance and timing." />
+            <DockPanel LastChildFill="False" Margin="0,0,0,4">
+              <TextBlock Text="Editable agenda" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <Button DockPanel.Dock="Right" Content="Rebuild from notes" Click="BuildAgenda_Click" Padding="10,5" Margin="8,0,0,0"/>
+            </DockPanel>
+            <DataGrid x:Name="AgendaGrid" Height="230" Margin="0,0,0,6" ItemsSource="{Binding}"
+                      AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                      SelectionMode="Single" SelectionUnit="FullRow" RowHeight="76" HeadersVisibility="Column">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Topic" Width="11*" Binding="{Binding Topic, UpdateSourceTrigger=PropertyChanged}"/>
+                <DataGridTextColumn Header="Name" Width="8*" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+                <DataGridTemplateColumn Header="Notes (one per line)" Width="20*">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
+                               TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="2" Padding="5"/>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+              </DataGrid.Columns>
+            </DataGrid>
+            <DockPanel LastChildFill="False" Margin="0,0,0,12">
+              <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                <Button Content="Add" Click="AddAgenda_Click" Padding="10,5" Margin="0,0,4,0"/>
+                <Button Content="Remove" Click="RemoveAgenda_Click" Padding="10,5" Margin="0,0,4,0"/>
+                <Button Content="↑" Click="MoveAgendaUp_Click" Padding="10,5" Margin="0,0,4,0" ToolTip="Move selected row up"/>
+                <Button Content="↓" Click="MoveAgendaDown_Click" Padding="10,5" Margin="0" ToolTip="Move selected row down"/>
+              </StackPanel>
+              <TextBlock x:Name="AgendaStatus" DockPanel.Dock="Right" Foreground="#60708A" FontSize="12"
+                         VerticalAlignment="Center" Text="Agenda not built"/>
+            </DockPanel>
             <UniformGrid Columns="2">
               <StackPanel Margin="0,0,6,0"><TextBlock Text="Meeting group"/><TextBox x:Name="GroupInput" Text="BHITS"/></StackPanel>
               <StackPanel Margin="6,0,0,0"><TextBlock Text="Date"/><DatePicker x:Name="DateInput" Margin="0,4,0,12" Padding="6" SelectedDateChanged="DateInput_SelectedDateChanged"/></StackPanel>

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -6,10 +7,13 @@ using System.Net.Http;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using Microsoft.Win32;
+using MinutesBridge.App.Editing;
 using MinutesBridge.App.Security;
 using MinutesBridge.Core.Authentication;
 using MinutesBridge.Core.Confluence;
+using MinutesBridge.Core.Editing;
 using MinutesBridge.Core.Models;
 using MinutesBridge.Core.Parsing;
 
@@ -19,7 +23,9 @@ namespace MinutesBridge.App;
 public partial class MainWindow : Window
 {
     private const int MaximumPeople = 250;
+    private const int MaximumClipboardPayloadCharacters = 1_000_000;
     private readonly FacilitatorNotesParser _parser = new();
+    private readonly ObservableCollection<EditableAgendaRow> _agendaRows = [];
     private readonly ConfluenceStorageRenderer _renderer = new();
     private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(20) };
     private readonly WindowsCredentialManagerSessionStore _sessionStore = new();
@@ -32,11 +38,15 @@ public partial class MainWindow : Window
     private string? _previousMinutesGroup;
     private DateOnly? _previousMinutesBeforeDate;
     private bool _loadingSpaces;
+    private bool _agendaNeedsRebuild;
 
     public MainWindow()
     {
         InitializeComponent();
         DateInput.SelectedDate = DateTime.Today;
+        AgendaGrid.DataContext = _agendaRows;
+        BuildAgendaFromNotes();
+        NotesInput.TextChanged += NotesInput_TextChanged;
         Loaded += Window_Loaded;
         Closed += Window_Closed;
     }
@@ -252,6 +262,7 @@ public partial class MainWindow : Window
 
     private void GeneratePreview_Click(object sender, RoutedEventArgs e)
     {
+        _current = null;
         try
         {
             _current = ReadMeeting();
@@ -308,6 +319,14 @@ public partial class MainWindow : Window
 
     private MeetingMinutes ReadMeeting()
     {
+        if (_agendaNeedsRebuild)
+        {
+            throw new ArgumentException("Meeting notes changed. Rebuild the editable agenda before generating the preview.");
+        }
+
+        AgendaGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+        AgendaGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
         if (DateInput.SelectedDate is not DateTime selectedDate)
         {
             throw new ArgumentException("Choose the meeting date.");
@@ -326,11 +345,166 @@ public partial class MainWindow : Window
             Bounded(NoteTakerInput.Text, "note taker", 200),
             attendees,
             regrets,
-            _parser.Parse(NotesInput.Text),
+            AgendaDraftValidator.ValidateAndConvert(_agendaRows.Select(row => row.ToDraft())),
             string.Equals(group, _previousMinutesGroup, StringComparison.OrdinalIgnoreCase) &&
             DateOnly.FromDateTime(selectedDate) == _previousMinutesBeforeDate
                 ? _previousMinutes?.WebUri
                 : null);
+    }
+
+    private void PasteClipboard_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var text = ReadClipboardText();
+            if (text.Length > FacilitatorNotesParser.MaximumInputCharacters)
+            {
+                throw new InvalidDataException(
+                    $"Clipboard notes must be {FacilitatorNotesParser.MaximumInputCharacters:N0} characters or fewer.");
+            }
+
+            NotesInput.Text = text;
+            BuildAgendaFromNotes();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidDataException or System.Runtime.InteropServices.COMException)
+        {
+            MessageBox.Show(
+                ex is ArgumentException or InvalidDataException
+                    ? ex.Message
+                    : "MinutesBridge could not read supported text from the clipboard.",
+                "Clipboard import failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private void BuildAgenda_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            BuildAgendaFromNotes();
+        }
+        catch (ArgumentException ex)
+        {
+            MessageBox.Show(ex.Message, "Check meeting notes", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void BuildAgendaFromNotes()
+    {
+        var parsed = _parser.Parse(NotesInput.Text);
+        _agendaRows.Clear();
+        foreach (var item in parsed)
+        {
+            _agendaRows.Add(EditableAgendaRow.FromAgendaItem(item));
+        }
+
+        AgendaStatus.Text = $"{_agendaRows.Count} row{(_agendaRows.Count == 1 ? string.Empty : "s")} ready";
+        _agendaNeedsRebuild = false;
+        _current = null;
+    }
+
+    private void NotesInput_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        AgendaStatus.Text = "Notes changed — rebuild agenda";
+        _agendaNeedsRebuild = true;
+        _current = null;
+    }
+
+    private void AddAgenda_Click(object sender, RoutedEventArgs e)
+    {
+        if (_agendaRows.Count >= AgendaDraftValidator.MaximumRows)
+        {
+            MessageBox.Show(
+                $"The agenda can contain at most {AgendaDraftValidator.MaximumRows} rows.",
+                "Agenda limit reached",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        var row = new EditableAgendaRow { Topic = "New topic" };
+        _agendaRows.Add(row);
+        AgendaGrid.SelectedItem = row;
+        AgendaGrid.ScrollIntoView(row);
+        MarkAgendaEdited();
+    }
+
+    private void RemoveAgenda_Click(object sender, RoutedEventArgs e)
+    {
+        if (AgendaGrid.SelectedItem is not EditableAgendaRow selected)
+        {
+            return;
+        }
+
+        _agendaRows.Remove(selected);
+        MarkAgendaEdited();
+    }
+
+    private void MoveAgendaUp_Click(object sender, RoutedEventArgs e) => MoveSelectedAgendaRow(-1);
+
+    private void MoveAgendaDown_Click(object sender, RoutedEventArgs e) => MoveSelectedAgendaRow(1);
+
+    private void MoveSelectedAgendaRow(int offset)
+    {
+        if (AgendaGrid.SelectedItem is not EditableAgendaRow selected)
+        {
+            return;
+        }
+
+        var currentIndex = _agendaRows.IndexOf(selected);
+        var targetIndex = currentIndex + offset;
+        if (targetIndex < 0 || targetIndex >= _agendaRows.Count)
+        {
+            return;
+        }
+
+        _agendaRows.Move(currentIndex, targetIndex);
+        AgendaGrid.SelectedItem = selected;
+        MarkAgendaEdited();
+    }
+
+    private void MarkAgendaEdited()
+    {
+        AgendaStatus.Text = $"{_agendaRows.Count} edited row{(_agendaRows.Count == 1 ? string.Empty : "s")}";
+        _current = null;
+    }
+
+    private static string ReadClipboardText()
+    {
+        var clipboard = Clipboard.GetDataObject() ?? throw new InvalidDataException("The clipboard is empty.");
+        if (clipboard.GetDataPresent(DataFormats.Rtf) && clipboard.GetData(DataFormats.Rtf) is string rtf)
+        {
+            if (rtf.Length > MaximumClipboardPayloadCharacters)
+            {
+                throw new ArgumentOutOfRangeException(nameof(rtf), "The rich clipboard payload is too large.");
+            }
+
+            try
+            {
+                var document = new FlowDocument();
+                var range = new TextRange(document.ContentStart, document.ContentEnd);
+                using var stream = new MemoryStream(Encoding.UTF8.GetBytes(rtf));
+                range.Load(stream, DataFormats.Rtf);
+                return range.Text.Trim();
+            }
+            catch (ArgumentException) when (clipboard.GetDataPresent(DataFormats.UnicodeText))
+            {
+                // Fall through to the clipboard's plain Unicode representation.
+            }
+        }
+
+        if (clipboard.GetDataPresent(DataFormats.UnicodeText) && clipboard.GetData(DataFormats.UnicodeText) is string text)
+        {
+            if (text.Length > MaximumClipboardPayloadCharacters)
+            {
+                throw new ArgumentOutOfRangeException(nameof(text), "The clipboard text is too large.");
+            }
+
+            return text.Trim();
+        }
+
+        throw new InvalidDataException("The clipboard does not contain supported text.");
     }
 
     private static string[] Lines(string value, string fieldName)
