@@ -3,19 +3,24 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Interop;
+using Microsoft.Identity.Client;
 using Microsoft.Win32;
 using MinutesBridge.App.Editing;
 using MinutesBridge.App.Security;
+using MinutesBridge.App.Teams;
 using MinutesBridge.Core.Authentication;
 using MinutesBridge.Core.Confluence;
 using MinutesBridge.Core.Editing;
 using MinutesBridge.Core.Models;
 using MinutesBridge.Core.Parsing;
+using MinutesBridge.Core.Teams;
 
 namespace MinutesBridge.App;
 
@@ -27,7 +32,7 @@ public partial class MainWindow : Window
     private readonly FacilitatorNotesParser _parser = new();
     private readonly ObservableCollection<EditableAgendaRow> _agendaRows = [];
     private readonly ConfluenceStorageRenderer _renderer = new();
-    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(20) };
+    private readonly HttpClient _httpClient = CreateHttpClient();
     private readonly WindowsCredentialManagerSessionStore _sessionStore = new();
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _destinationLoad;
@@ -39,6 +44,9 @@ public partial class MainWindow : Window
     private DateOnly? _previousMinutesBeforeDate;
     private bool _loadingSpaces;
     private bool _agendaNeedsRebuild;
+    private MicrosoftTeamsAuthentication? _teamsAuthentication;
+    private TeamsGraphClient? _teamsClient;
+    private string? _teamsAccessToken;
 
     public MainWindow()
     {
@@ -126,6 +134,100 @@ public partial class MainWindow : Window
         finally
         {
             ConnectButton.IsEnabled = true;
+        }
+    }
+
+    private async void ConnectTeams_Click(object sender, RoutedEventArgs e)
+    {
+        TeamsConnectButton.IsEnabled = false;
+        CheckTeamsButton.IsEnabled = false;
+        TeamsConnectionStatus.Text = "Waiting for Microsoft sign-in…";
+
+        try
+        {
+            _teamsAuthentication ??= new MicrosoftTeamsAuthentication();
+            var result = await _teamsAuthentication.AcquireAsync(
+                new WindowInteropHelper(this).Handle,
+                _lifetime.Token);
+            _teamsAccessToken = result.AccessToken;
+            _teamsClient = new TeamsGraphClient(_httpClient);
+            var chats = await _teamsClient.GetMeetingChatsAsync(result.AccessToken, _lifetime.Token);
+            TeamsChatInput.ItemsSource = chats;
+            TeamsChatInput.IsEnabled = chats.Count > 0;
+            CheckTeamsButton.IsEnabled = chats.Count > 0;
+            TeamsConnectionStatus.Text = chats.Count == 0
+                ? "Connected, but no accessible meeting chats were returned"
+                : $"Connected • {chats.Count} meeting chat{(chats.Count == 1 ? string.Empty : "s")} available";
+
+            if (chats.Count > 0)
+            {
+                var preferred = chats.FirstOrDefault(chat =>
+                    chat.Topic.Contains("BHITS", StringComparison.OrdinalIgnoreCase));
+                TeamsChatInput.SelectedItem = preferred ?? chats[0];
+            }
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The window is closing; no user notification is required.
+        }
+        catch (Exception ex) when (ex is MsalException or InvalidOperationException or ArgumentException or
+                                   HttpRequestException or IOException or TimeoutException)
+        {
+            ResetTeamsConnection();
+            MessageBox.Show(
+                "MinutesBridge could not connect to Microsoft Teams. Confirm the Entra application configuration and delegated Chat.Read access, then try again.",
+                "Teams connection failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            TeamsConnectButton.IsEnabled = true;
+        }
+    }
+
+    private async void CheckTeamsNow_Click(object sender, RoutedEventArgs e)
+    {
+        if (_teamsClient is null ||
+            string.IsNullOrWhiteSpace(_teamsAccessToken) ||
+            TeamsChatInput.SelectedItem is not TeamsMeetingChat chat)
+        {
+            return;
+        }
+
+        CheckTeamsButton.IsEnabled = false;
+        TeamsConnectionStatus.Text = "Checking the selected meeting chat…";
+        try
+        {
+            var messages = await _teamsClient.GetRecentMessagesAsync(
+                _teamsAccessToken,
+                chat.Id,
+                _lifetime.Token);
+            var imported = TeamsSummaryExtractor.Extract(chat.Id, messages);
+            GroupInput.Text = "BHITS";
+            DateInput.SelectedDate = imported.MeetingDate.ToDateTime(TimeOnly.MinValue);
+            NotesInput.Text = imported.Content;
+            BuildAgendaFromNotes();
+            TeamsConnectionStatus.Text = "Teams rundown imported • Review required";
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The window is closing; no user notification is required.
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidDataException or HttpRequestException or TimeoutException)
+        {
+            TeamsConnectionStatus.Text = "No import was made";
+            MessageBox.Show(
+                ex is InvalidDataException
+                    ? ex.Message
+                    : "MinutesBridge could not read the selected Teams meeting chat.",
+                "Teams import failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            CheckTeamsButton.IsEnabled = TeamsChatInput.SelectedItem is TeamsMeetingChat;
         }
     }
 
@@ -592,6 +694,26 @@ public partial class MainWindow : Window
         ParentPageInput.IsEnabled = false;
         ConnectionStatus.Text = "Not connected";
         PreviousMinutesStatus.Text = "Previous BHITS page: not loaded";
+    }
+
+    private void ResetTeamsConnection()
+    {
+        _teamsAccessToken = null;
+        _teamsClient = null;
+        TeamsChatInput.ItemsSource = null;
+        TeamsChatInput.IsEnabled = false;
+        CheckTeamsButton.IsEnabled = false;
+        TeamsConnectionStatus.Text = "Not connected";
+    }
+
+    private static HttpClient CreateHttpClient()
+    {
+        var handler = new HttpClientHandler
+        {
+            UseProxy = true,
+            DefaultProxyCredentials = CredentialCache.DefaultCredentials
+        };
+        return new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
     }
 
     private static string SafeFileName(string value) => string.Concat(

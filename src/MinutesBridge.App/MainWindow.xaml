@@ -24,6 +24,25 @@
       <Border Grid.Column="0" Background="White" BorderBrush="#DDE4EE" BorderThickness="1" CornerRadius="10" Padding="22">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel>
+            <Border Background="#EAF7F1" BorderBrush="#B9DFCF" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+              <StackPanel>
+                <DockPanel LastChildFill="False">
+                  <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="Microsoft Teams source" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                    <TextBlock x:Name="TeamsConnectionStatus" Text="Not connected" Foreground="#60708A" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <Button x:Name="TeamsConnectButton" DockPanel.Dock="Right" Content="Connect Teams" Click="ConnectTeams_Click"
+                          Background="White" BorderBrush="#0F7B57" Foreground="#0F7B57" Margin="12,0,0,0"/>
+                </DockPanel>
+                <TextBlock Text="Meeting chat" Margin="0,10,0,0"/>
+                <ComboBox x:Name="TeamsChatInput" Margin="0,4,0,8" Padding="8" IsEnabled="False"/>
+                <Button x:Name="CheckTeamsButton" Content="Check Teams now" Click="CheckTeamsNow_Click"
+                        IsEnabled="False" HorizontalAlignment="Left" Padding="12,6"
+                        Background="#0F7B57" Foreground="White" BorderThickness="0"/>
+                <TextBlock Text="Read-only import. Nothing is published automatically." Foreground="#60708A"
+                           FontSize="12" Margin="0,8,0,0"/>
+              </StackPanel>
+            </Border>
             <Border Background="#EEF2FF" BorderBrush="#CBD3FF" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
               <StackPanel>
                 <DockPanel LastChildFill="False">

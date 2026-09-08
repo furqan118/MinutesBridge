@@ -4,7 +4,7 @@ MinutesBridge is a Windows desktop app that converts copied Microsoft Teams
 Facilitator notes into the BHITS Confluence meeting-notes format. It does not
 record meetings, retrieve transcripts, or send notes to another AI service.
 
-## Current milestone (v0.3 in progress)
+## Current milestone (v0.4 in progress)
 
 This starter implements:
 
@@ -36,6 +36,32 @@ The v0.3 editing foundation adds:
 - editable agenda rows for topics, owners, and one-note-per-line content;
 - add, remove, and reorder controls before the mandatory preview;
 - independent validation of edited rows before rendering or draft export.
+
+The v0.4 Teams import foundation adds:
+
+- tenant-specific Microsoft work-account sign-in through MSAL;
+- delegated, read-only `Chat.Read` access with no client secret in the app;
+- bounded discovery of meeting chats available to the signed-in employee;
+- a manual **Check Teams now** action for the selected BHITS meeting chat;
+- exact detection of the Teams-generated rundown heading and local import into
+  the mandatory review workflow.
+
+Configure the organization-controlled Entra public-client application before
+using Teams import:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  "MINUTESBRIDGE_MICROSOFT_CLIENT_ID",
+  "00000000-0000-0000-0000-000000000000",
+  "User")
+[Environment]::SetEnvironmentVariable(
+  "MINUTESBRIDGE_MICROSOFT_TENANT_ID",
+  "00000000-0000-0000-0000-000000000000",
+  "User")
+```
+
+The Entra registration must be a public desktop client with delegated
+`Chat.Read`. Do not add a client secret to the desktop application.
 
 Live publishing is intentionally disabled in the desktop UI until OAuth is
 connected. No Atlassian client secret or employee password belongs in the app.
