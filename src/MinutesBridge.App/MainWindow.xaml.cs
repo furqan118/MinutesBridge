@@ -92,7 +92,9 @@ public partial class MainWindow : Window
 
         try
         {
-            var broker = new OAuthBrokerClient(_httpClient, BrokerOptions.FromEnvironment());
+            var broker = new OAuthBrokerClient(
+                _httpClient,
+                MinutesBridge.Core.Authentication.BrokerOptions.FromEnvironment());
             var start = await broker.StartAsync(_lifetime.Token);
             Process.Start(new ProcessStartInfo(start.AuthorizationUri.AbsoluteUri) { UseShellExecute = true });
 
