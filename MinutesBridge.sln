@@ -1,0 +1,31 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinutesBridge.Core", "src\MinutesBridge.Core\MinutesBridge.Core.csproj", "{7061E81D-2E49-4BB8-9DD0-A7DE292CD2CF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinutesBridge.App", "src\MinutesBridge.App\MinutesBridge.App.csproj", "{E392229A-57D6-418E-89D8-8A0F818D43E6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinutesBridge.Core.Tests", "tests\MinutesBridge.Core.Tests\MinutesBridge.Core.Tests.csproj", "{18BA9259-6E10-41A9-BB70-B03066F2149C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7061E81D-2E49-4BB8-9DD0-A7DE292CD2CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7061E81D-2E49-4BB8-9DD0-A7DE292CD2CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7061E81D-2E49-4BB8-9DD0-A7DE292CD2CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7061E81D-2E49-4BB8-9DD0-A7DE292CD2CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E392229A-57D6-418E-89D8-8A0F818D43E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E392229A-57D6-418E-89D8-8A0F818D43E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E392229A-57D6-418E-89D8-8A0F818D43E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E392229A-57D6-418E-89D8-8A0F818D43E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18BA9259-6E10-41A9-BB70-B03066F2149C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18BA9259-6E10-41A9-BB70-B03066F2149C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18BA9259-6E10-41A9-BB70-B03066F2149C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18BA9259-6E10-41A9-BB70-B03066F2149C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

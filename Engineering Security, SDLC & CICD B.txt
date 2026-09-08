@@ -1,0 +1,477 @@
+Engineering Security, SDLC & CI/CD Baseline
+
+**Status:** LOCKED / NON-NEGOTIABLE  
+**Applies to:** All Programming and Database languages, scripting languages  
+
+
+## 1. Security principles
+
+Must be secure by default. Security controls must be implemented in code, schema, infrastructure, CI, deployment configuration, and operational procedure rather than relying on developer memory or UI convention.
+
+Core principles:
+
+- collect less sensitive information
+- least privilege
+- explicit trust boundaries
+- deny by default for privileged actions
+- explicit anonymous access only where intended
+- defense in depth
+- privacy-safe observability
+- deterministic builds
+- reviewable schema evolution
+- test locked invariants
+- never trade privacy/security thresholds for convenience, funding tier, or feature velocity
+
+## 2. Secrets and configuration
+
+Requirements:
+
+- no hardcoded secrets
+- no production credentials in source control
+- no machine-specific absolute paths
+- use environment variables or managed secret stores according to sensitivity
+- `.env.example` contains fake/example values only
+- do not place secrets or sensitive values in URLs
+- production deployment should use managed secrets and workload identity/OIDC where possible
+- separate dev/preview/staging/prod secrets and databases
+
+CI enforcement direction:
+
+- Gitleaks or equivalent secret scan on PRs
+- branch protection requires secret-scan success
+- no production secrets exposed to untrusted PR jobs
+
+## 3. Authentication, authorization, RBAC, MFA
+
+Anonymous access is permitted only for explicitly intended public endpoints.
+
+Requirements:
+
+- strong authentication on privileged/admin surfaces
+- MFA before production privileged/admin exposure
+- RBAC and least privilege enforced server-side
+- no shared staff accounts
+- permission checks at workflow/service boundary, not just UI controls
+- separate public/admin/commercial/NLP security boundaries
+- material privileged mutations produce audit events
+
+## 4. Input validation and sanitization
+
+Every trust boundary must have explicit validation.
+
+Requirements:
+
+- Zod or equivalent for TypeScript request/config validation
+- Pydantic for Python API/model validation
+- explicit enum validation
+- maximum request body sizes
+- maximum narrative lengths
+- pagination caps
+- query complexity caps
+- safe handling of `unknown`, `no`, `skip`, `null`, and missing values
+- path validation and traversal prevention for any file handling
+- output-context sanitization where user-provided content is rendered
+
+## 5. Secure logging and privacy-safe observability
+
+Use structured logs.
+
+Never log:
+
+- secrets
+- API keys
+- auth tokens
+- cookies
+- raw contribution payloads
+- raw narratives
+- sensitive search queries
+- CNIC values
+- phone numbers
+- exact sensitive locations
+- contact-form messages
+- raw PII detection spans/strings unless explicitly required inside a restricted security workflow
+
+Log redaction must include authorization and cookie headers.
+
+Errors must remain actionable without leaking sensitive values.
+
+## 6. Database security and integrity
+
+PostgreSQL/PostGIS is the canonical system of record.
+
+Requirements:
+
+- encryption at rest enabled in production infrastructure
+- TLS in transit for production DB connectivity
+- pooled connections
+- bounded pool sizes
+- explicit query/database timeouts
+- parameterized SQL
+- set-based SQL preferred
+- no N+1 hot-path access patterns
+- no quadratic query loops
+- batched inserts/upserts for multi-row writes
+- idempotency and uniqueness constraints for replay-sensitive operations
+- indexes for hot lookup/filter/join paths
+- no direct browser-to-database access
+- no unbounded result sets
+- pagination/query caps
+- migrations are explicit deployment steps
+- use expand-migrate-contract where practical
+- automated backups and tested restore procedures before public launch
+
+## 7. Resource safety and performance
+
+Requirements:
+
+- no unbounded memory loads
+- stream large files/results where appropriate
+- bounded batch sizes
+- bounded concurrency
+- backpressure
+- explicit timeouts
+- bounded retries
+- no file descriptor leaks
+- no DB client/connection leaks
+- no socket/stream leaks
+- secure temporary-file cleanup where applicable
+- no local disk as canonical production state
+- avoid quadratic algorithms on potentially large user/report sets
+- cache/precompute public metrics rather than recomputing on page load
+
+## 8. Batch and worker requirements
+
+Every batch/background job must expose:
+
+- processed count
+- succeeded count
+- failed count
+- skipped count
+- elapsed time
+- failure classification
+
+Every replay-sensitive job must be idempotent or use idempotency keys.
+
+Use:
+
+- bounded batches
+- bounded concurrency
+- batched DB writes
+- set-based SQL
+- retry with limits/backoff
+- dead-letter or explicit failed-state handling where appropriate
+
+Never implement row-by-row loops over large DB result sets when a set-based/bulk approach is available.
+
+## 9. File handling
+
+Citizen evidence uploads are out of MVP.
+
+For official/admin file handling:
+
+- validate path
+- prevent traversal
+- validate size/type
+- do not trust filenames or MIME type alone
+- use secure temporary directories
+- delete temporary files securely where applicable
+- do not expose local filesystem paths to public clients
+- do not use local files as canonical production state
+
+## 10. Data-layer separation
+
+Rishwat preserves these layers:
+
+1. RAW
+2. NORMALIZED
+3. MODERATED
+4. QUALIFIED
+5. AGGREGATED
+6. DISPLAY-CONTROLLED
+
+Rules:
+
+- raw user input is append-only/preserved
+- normalization never overwrites raw input
+- raw narrative is stored separately with stricter access
+- raw/unmoderated submissions never power public metrics
+- frontend never reads raw reports
+- frontend never calculates public metrics
+- accepted does not mean independently proven true
+
+## 11. Core engineering invariants
+
+These are mandatory and should be enforced by DB constraints, domain logic, contract tests, and integration tests where practical.
+
+### INV-01
+
+Every contribution references its collection-time service config version.
+
+### INV-02
+
+Raw user input is never overwritten by normalization.
+
+### INV-03
+
+Public metrics never query unmoderated raw submissions directly.
+
+### INV-04
+
+Unknown ≠ No.
+
+### INV-05
+
+Refused payment ≠ paid zero. Refusal amount paid is `NULL`.
+
+### INV-06
+
+Intermediary payment ≠ direct unofficial payment.
+
+### INV-07
+
+Official information ≠ community data.
+
+### INV-08
+
+Provider/government objection cannot directly alter community reports.
+
+### INV-09
+
+Suppressed values never leave public or commercial API responses.
+
+### INV-10
+
+No public report identity exists.
+
+### INV-11
+
+Service/category/provider identity remain independent.
+
+### INV-12
+
+Language changes labels, not semantic values.
+
+### INV-13
+
+Historical official records are superseded/versioned, not overwritten.
+
+### INV-14
+
+Frontend does not calculate public metrics.
+
+### INV-15
+
+Narrative-derived interpretation does not silently become quantitative public data.
+
+### INV-16
+
+Python intelligence signals never directly become product truth without TypeScript/domain rules.
+
+### INV-17
+
+Commercial customer status never changes privacy/suppression/methodology.
+
+### INV-18
+
+Sensitive raw search/narrative data never enters normal logs or URLs.
+
+## 12. Financial-data integrity
+
+Keep separate:
+
+1. official government charges
+2. legitimate external service-related costs
+3. direct unofficial payment
+4. intermediary/agent/professional interaction
+
+Requirements:
+
+- agent fee is not automatically corruption
+- agent quote, final quote, actual paid, and claimed-inside amount remain separate
+- never derive `agent quote - official fee = corruption amount` unless official-fee inclusion/composition is explicitly known
+- refusal amount paid is `NULL`, not zero
+- do not double count official fees included inside bundled agent payments
+- unknown bundle composition remains unknown
+
+## 13. Privacy and sensitive services
+
+Requirements:
+
+- collect less rather than promising to protect more
+- no absolute anonymity claims
+- public MVP does not require reporter accounts
+- no intentional collection of name, CNIC, phone, exact home address, or unnecessary identifiers
+- no evidence uploads in MVP
+- no named officials or agents in public product
+- FIR/courts use stricter public granularity and risk rules
+- suppressed values are removed server-side, never sent and merely hidden client-side
+
+## 14. Official-data integrity
+
+Official information is versioned evidence.
+
+Requirements:
+
+- source ≠ record ≠ record version ≠ verification event
+- no hardcoded permanent official fee/timeline truth in UI code
+- no fabricated production official values
+- effective date and checked date remain distinct
+- conflicting sources create review/conflict state
+- historical records are never silently overwritten
+
+## 15. Dependency and supply-chain security
+
+Requirements:
+
+- committed lockfile
+- deterministic installs
+- dependency vulnerability scanning in CI
+- secret scanning in CI
+- static security analysis where configured
+- no blind `npm audit fix --force`
+- critical vulnerabilities upgraded urgently
+- major upgrades require review/tests
+- production images do not use floating `latest`
+- production base images should be pinned, preferably by digest
+- dependency update automation requires CI review before merge
+
+## 16. CI/CD baseline
+
+Preferred flow:
+
+feature branch → PR → CI → preview/staging → review → merge main → controlled production deploy → smoke checks → rollback if needed
+
+Required PR CI categories:
+
+- formatting
+- lint
+- TypeScript typecheck
+- Python lint/typecheck
+- unit tests
+- contract/schema tests
+- invariant tests
+- integration tests
+- migration validation
+- dependency vulnerability scan
+- secret scan
+- static security analysis where configured
+- container builds
+- smoke tests where applicable
+
+Rules:
+
+- protect `main`
+- no casual direct production pushes
+- required checks before merge
+- stronger approval for privacy/metric/RBAC/migration changes
+- do not disable security gates just to make CI green
+- same artifact promoted across environments where practical
+- migrations are controlled deployment steps
+- feature flags may not weaken privacy/security thresholds
+- rollback must be possible
+
+## 17. Rate limiting and adversarial resilience
+
+Assume success attracts:
+
+- bots
+- spam
+- coordinated manipulation
+- scraping
+- API abuse
+- denial-of-service
+- credential attacks
+- injection attempts
+
+Controls:
+
+- endpoint-specific rate limits
+- WAF/bot protection direction
+- request-size limits
+- narrative-length limits
+- pagination caps
+- query complexity caps
+- bounded expensive NLP calls
+- circuit breakers
+- risk-triggered challenges instead of universal CAPTCHA
+- suspicious queue isolation
+- integrity review
+- future commercial API quotas per key/account
+- emergency kill switches
+
+Do not create hidden reporter reputation or corruption-probability scores.
+
+## 18. Code quality requirements
+
+Avoid these failure modes:
+
+- memory explosions
+- unclosed DB connections
+- file descriptor leaks
+- silent data duplication
+- N+1 queries
+- unbatched writes
+- missing indexes
+- broad exception handling
+- magic numbers
+- placeholder/TODO modules presented as production-complete
+- quadratic DB/query loops
+- security/privacy logic implemented only in frontend
+
+Prefer:
+
+- explicit code
+- narrow reversible abstractions
+- centralized thresholds/config
+- schema constraints
+- invariant tests
+- idempotent operations
+- set-based SQL
+- bounded concurrency
+
+## 19. Observability requirements
+
+Production observability must eventually cover at minimum:
+
+- request rate
+- error rate
+- latency p50/p95/p99
+- DB query latency
+- slow queries
+- pool saturation
+- cache hit rate
+- Redis/queue depth
+- retries/dead letters
+- NLP availability/latency
+- submission intake
+- normalization completion
+- moderation backlog
+- metric recomputation failures
+- CDN/origin ratio
+- CPU/memory/storage
+
+Observability must remain privacy-safe.
+
+## 20. Current vertical-slice implementation order
+
+1. CNIC Renewal
+2. Government Hospital OPD
+3. FIR Registration
+4. remaining reference services
+
+These first three slices validate architecture diversity and sensitive privacy behavior.
+
+## 21. Merge gate
+
+A PR should not be called safe to merge when required CI is failing.
+
+At minimum, before merge verify:
+
+- required CI checks green
+- no known secret exposure
+- no new high/critical dependency vulnerability without explicit accepted remediation plan
+- migrations safe/replayable where changed
+- no locked invariant regression
+- no sensitive logging regression
+- no public suppression/privacy regression
+- no unauthorized architecture drift

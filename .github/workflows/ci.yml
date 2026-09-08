@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore MinutesBridge.sln
+      - name: Reject high or critical NuGet vulnerabilities
+        shell: pwsh
+        run: |
+          $report = dotnet list MinutesBridge.sln package --vulnerable --include-transitive --format json | ConvertFrom-Json
+          $vulnerabilities = @($report.projects.frameworks.topLevelPackages.vulnerabilities) + @($report.projects.frameworks.transitivePackages.vulnerabilities)
+          $blocked = @($vulnerabilities | Where-Object { $_.severity -in @('High', 'Critical') })
+          if ($blocked.Count -gt 0) { throw "High or critical NuGet vulnerability detected." }
+      - name: Verify formatting
+        run: dotnet format MinutesBridge.sln --verify-no-changes --no-restore
+      - name: Test
+        run: dotnet test MinutesBridge.sln --configuration Release --no-restore --nologo
+      - name: Build Windows app
+        run: dotnet build src/MinutesBridge.App/MinutesBridge.App.csproj --configuration Release --no-restore --nologo
+
+  codeql:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
